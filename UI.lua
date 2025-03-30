@@ -156,17 +156,28 @@ function Library:CreateTab(name)
         AutoButtonColor = false
     })
 
+    -- Active indicator for the tab
+    tab.activeIndicator = Create("Frame", {
+        Parent = tab.button,
+        BackgroundColor3 = Color3.fromRGB(0, 255, 140),
+        BorderSizePixel = 0,
+        Size = UDim2.new(0, 3, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        Visible = false
+    })
+
     -- Tab Content
     tab.content = Create("ScrollingFrame", {
         Parent = self.contentContainer,
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 1, 0),
+        CanvasSize = UDim2.new(0, 0, 0, 0),
         ScrollBarThickness = 4,
         ScrollingEnabled = true,
         Visible = false,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        Name = "Tab_" .. name
+        Name = "Tab_" .. name,
+        ClipsDescendants = true
     })
 
     -- Layout for content
@@ -189,14 +200,18 @@ function Library:CreateTab(name)
     
     -- Tab Functions
     function tab:Show()
-        -- Reset all button colors
+        -- Reset all button colors and indicators
         for _, v in pairs(Library.tabs) do
             if v.button then
                 v.button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+                
+                if v.activeIndicator then
+                    v.activeIndicator.Visible = false
+                end
             end
         end
         
-        -- Hide all content frames
+        -- Hide all content frames 
         for _, child in pairs(Library.contentContainer:GetChildren()) do
             if child:IsA("ScrollingFrame") then
                 child.Visible = false
@@ -205,10 +220,17 @@ function Library:CreateTab(name)
         
         -- Highlight this tab's button
         tab.button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        tab.activeIndicator.Visible = true
         
         -- Show only this tab's content
         tab.content.Visible = true
-        tab.content:TweenSize(UDim2.new(1, 0, 1, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        
+        -- Force UI refresh
+        task.spawn(function()
+            tab.content.Size = UDim2.new(1, 0, 0.99, 0) 
+            task.wait(0.05)
+            tab.content.Size = UDim2.new(1, 0, 1, 0)
+        end)
     end
 
     tab.button.MouseButton1Click:Connect(function()
