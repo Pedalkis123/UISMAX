@@ -13,7 +13,9 @@ local Library = {
     keybind = Enum.KeyCode.RightShift,
     callback = nil,
     objects = {},
-    connections = {}
+    connections = {},
+    tabs = {},  -- Store tabs for management
+    activeTab = nil  -- Track active tab
 }
 
 -- Utility Functions
@@ -125,6 +127,13 @@ function Library:Init(title)
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
     })
 
+    -- Create UI List Layout for tab buttons
+    Create("UIListLayout", {
+        Parent = self.tabButtons,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 2)
+    })
+
     -- Content Container
     self.contentContainer = Create("Frame", {
         Parent = self.container,
@@ -132,23 +141,47 @@ function Library:Init(title)
         BorderSizePixel = 0,
         Position = UDim2.new(0, 150, 0, 30),
         Size = UDim2.new(1, -150, 1, -30),
+        ClipsDescendants = true
     })
     
-    -- Store tabs for reference
-    self.tabs = {}
-
     return self
+end
+
+-- Function to select a tab
+function Library:SelectTab(tabName)
+    if not tabName then return end
+    
+    local targetTab
+    for _, tab in pairs(self.tabs) do
+        if tab.name == tabName then
+            targetTab = tab
+            break
+        end
+    end
+    
+    if targetTab then
+        targetTab:Show()
+    end
 end
 
 function Library:CreateTab(name)
     local tab = {}
+    tab.name = name
+    
+    -- Tab Button with container for organization
+    local buttonContainer = Create("Frame", {
+        Parent = self.tabButtons,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 35),
+        LayoutOrder = #self.tabs
+    })
     
     -- Tab Button
     tab.button = Create("TextButton", {
-        Parent = self.tabButtons,
+        Parent = buttonContainer,
         BackgroundColor3 = Color3.fromRGB(35, 35, 35),
         BorderSizePixel = 0,
-        Size = UDim2.new(1, 0, 0, 35),
+        Size = UDim2.new(1, 0, 1, 0),
         Font = Enum.Font.GothamSemibold,
         Text = name,
         TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -166,18 +199,27 @@ function Library:CreateTab(name)
         Visible = false
     })
 
-    -- Tab Content
-    tab.content = Create("ScrollingFrame", {
+    -- Tab Content Container
+    tab.contentFrame = Create("Frame", {
         Parent = self.contentContainer,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        Visible = false,
+        Name = "ContentContainer_" .. name
+    })
+    
+    -- Tab Content (Scrolling Frame)
+    tab.content = Create("ScrollingFrame", {
+        Parent = tab.contentFrame,
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 1, 0),
         CanvasSize = UDim2.new(0, 0, 0, 0),
         ScrollBarThickness = 4,
         ScrollingEnabled = true,
-        Visible = false,
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         Name = "Tab_" .. name,
-        ClipsDescendants = true
+        ClipsDescendants = true,
+        BorderSizePixel = 0
     })
 
     -- Layout for content
@@ -196,55 +238,44 @@ function Library:CreateTab(name)
 
     -- Add tab to library tabs
     table.insert(self.tabs, tab)
-    tab.name = name
     
     -- Tab Functions
     function tab:Show()
-        -- Reset all button colors and indicators
-        for _, v in pairs(Library.tabs) do
-            if v.button then
-                v.button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-                
-                if v.activeIndicator then
-                    v.activeIndicator.Visible = false
-                end
+        -- Hide all tabs first
+        for _, otherTab in pairs(Library.tabs) do
+            if otherTab.contentFrame then
+                otherTab.contentFrame.Visible = false
+            end
+            
+            if otherTab.button then
+                otherTab.button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            end
+            
+            if otherTab.activeIndicator then
+                otherTab.activeIndicator.Visible = false
             end
         end
         
-        -- Hide all content frames 
-        for _, child in pairs(Library.contentContainer:GetChildren()) do
-            if child:IsA("ScrollingFrame") then
-                child.Visible = false
-            end
-        end
-        
-        -- Highlight this tab's button
+        -- Now show only this tab
+        tab.contentFrame.Visible = true
         tab.button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
         tab.activeIndicator.Visible = true
         
-        -- Show only this tab's content
-        tab.content.Visible = true
-        
-        -- Force UI refresh
-        task.spawn(function()
-            tab.content.Size = UDim2.new(1, 0, 0.99, 0) 
-            task.wait(0.05)
-            tab.content.Size = UDim2.new(1, 0, 1, 0)
-        end)
+        -- Set this as active tab
+        Library.activeTab = tab
     end
 
+    -- Tab button click handler
     tab.button.MouseButton1Click:Connect(function()
-        for _, otherTab in pairs(Library.tabs) do
-            if otherTab.content then
-                otherTab.content.Visible = false
-            end
-        end
         tab:Show()
     end)
 
     -- Show first tab by default
     if #self.tabs == 1 then
-        tab:Show()
+        task.spawn(function()
+            task.wait(0.1) -- Small delay to ensure all UI is created
+            tab:Show()
+        end)
     end
 
     function tab:AddToggle(options)
