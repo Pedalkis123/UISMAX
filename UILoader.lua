@@ -1,54 +1,18 @@
--- UILoader: A robust loader for SMAX V2 UI Library
--- This module handles fetching, loading, and error reporting for the UI library
+-- Simple UI Loader
+-- This is a minimalist loader that directly loads the UI library with minimal error handling
 
--- Define the UI URL
-local UI_URL = "https://raw.githubusercontent.com/Pedalkis123/UISMAX/refs/heads/main/UI.lua"
-
--- Create a module that returns the UI library
-local UILoader = {}
-
--- Main loading function
+-- Create the loader function
 local function LoadUI()
-    -- Step 1: Print loading message with timestamp
-    local timestamp = os.date("%H:%M:%S")
-    print(timestamp .. " -- Loading UI library from GitHub...")
+    -- Set the URL to load from (use main branch, not refs/heads)
+    local url = "https://raw.githubusercontent.com/Pedalkis123/UISMAX/main/UI.lua"
     
-    -- Step 2: Attempt to fetch the content with error handling
-    local success, content
-    success, content = pcall(function()
-        return game:HttpGet(UI_URL)
-    end)
+    print("Loading UI library from: " .. url)
     
-    -- Handle fetch errors
-    if not success then
-        warn(timestamp .. " -- Failed to fetch UI library: " .. tostring(content))
-        error("HTTP GET failed. Verify HTTP requests are enabled in game settings.")
-        return nil
-    end
+    -- Attempt to load
+    local content = game:HttpGet(url)
     
-    -- Step 3: Validate content
-    if not content or #content < 100 then
-        warn(timestamp .. " -- Invalid UI content received (too short or empty)")
-        error("Retrieved content appears invalid. The GitHub URL may be incorrect.")
-        return nil
-    end
-    
-    -- Step 4: Execute the content
-    local execSuccess, result
-    execSuccess, result = pcall(function()
-        return loadstring(content)()
-    end)
-    
-    -- Handle execution errors
-    if not execSuccess then
-        warn(timestamp .. " -- Failed to execute UI code: " .. tostring(result))
-        error("UI library execution failed. The library may have syntax errors.")
-        return nil
-    end
-    
-    -- Success!
-    print(timestamp .. " -- UI library loaded successfully!")
-    return result
+    -- Execute the script
+    return loadstring(content)()
 end
 
 -- Return the loaded UI
