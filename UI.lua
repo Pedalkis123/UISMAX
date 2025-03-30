@@ -57,10 +57,18 @@ function Library:Init(title)
         Size = UDim2.new(0, 600, 0, 400),
     })
 
-    -- Make Draggable
+    -- Title Bar
+    self.titleBar = Create("Frame", {
+        Parent = self.container,
+        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 0, 30),
+    })
+
+    -- Make Draggable (only from title bar)
     local dragging, dragInput, dragStart, startPos
     
-    self.container.InputBegan:Connect(function(input)
+    self.titleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
@@ -68,7 +76,7 @@ function Library:Init(title)
         end
     end)
 
-    self.container.InputEnded:Connect(function(input)
+    self.titleBar.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
@@ -86,14 +94,6 @@ function Library:Init(title)
             self.container.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
-
-    -- Title Bar
-    self.titleBar = Create("Frame", {
-        Parent = self.container,
-        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-        BorderSizePixel = 0,
-        Size = UDim2.new(1, 0, 0, 30),
-    })
 
     Create("TextLabel", {
         Parent = self.titleBar,
