@@ -133,6 +133,9 @@ function Library:Init(title)
         Position = UDim2.new(0, 150, 0, 30),
         Size = UDim2.new(1, -150, 1, -30),
     })
+    
+    -- Store tabs for reference
+    self.tabs = {}
 
     return self
 end
@@ -178,13 +181,20 @@ function Library:CreateTab(name)
         PaddingTop = UDim.new(0, 10)
     })
 
+    -- Add tab to library tabs
+    table.insert(self.tabs, tab)
+    
     -- Tab Functions
     function tab:Show()
-        for _, v in pairs(Library.contentContainer:GetChildren()) do
-            if v:IsA("ScrollingFrame") then
-                v.Visible = false
+        -- Reset all tab buttons and hide all content
+        for _, tabObj in pairs(Library.tabs) do
+            if tabObj.button and tabObj.content then
+                tabObj.button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+                tabObj.content.Visible = false
             end
         end
+        
+        -- Show only this tab's content and highlight its button
         tab.content.Visible = true
         tab.button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     end
@@ -194,7 +204,7 @@ function Library:CreateTab(name)
     end)
 
     -- Show first tab by default
-    if #self.tabButtons:GetChildren() == 1 then
+    if #self.tabs == 1 then
         tab:Show()
     end
 
