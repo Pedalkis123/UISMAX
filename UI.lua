@@ -164,7 +164,9 @@ function Library:CreateTab(name)
         ScrollBarThickness = 4,
         ScrollingEnabled = true,
         Visible = false,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Name = "Tab_" .. name
     })
 
     -- Layout for content
@@ -183,23 +185,38 @@ function Library:CreateTab(name)
 
     -- Add tab to library tabs
     table.insert(self.tabs, tab)
+    tab.name = name
     
     -- Tab Functions
     function tab:Show()
-        -- Reset all tab buttons and hide all content
-        for _, tabObj in pairs(Library.tabs) do
-            if tabObj.button and tabObj.content then
-                tabObj.button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-                tabObj.content.Visible = false
+        -- Reset all button colors
+        for _, v in pairs(Library.tabs) do
+            if v.button then
+                v.button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
             end
         end
         
-        -- Show only this tab's content and highlight its button
-        tab.content.Visible = true
+        -- Hide all content frames
+        for _, child in pairs(Library.contentContainer:GetChildren()) do
+            if child:IsA("ScrollingFrame") then
+                child.Visible = false
+            end
+        end
+        
+        -- Highlight this tab's button
         tab.button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        
+        -- Show only this tab's content
+        tab.content.Visible = true
+        tab.content:TweenSize(UDim2.new(1, 0, 1, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
     end
 
     tab.button.MouseButton1Click:Connect(function()
+        for _, otherTab in pairs(Library.tabs) do
+            if otherTab.content then
+                otherTab.content.Visible = false
+            end
+        end
         tab:Show()
     end)
 
