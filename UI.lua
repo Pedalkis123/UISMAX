@@ -51,9 +51,18 @@ local NexusUI = {
 			Divider = Color3.fromRGB(60, 30, 80),
 			Text = Color3.fromRGB(235, 220, 255),
 			TextDark = Color3.fromRGB(180, 120, 255)
+		},
+		-- New JJBA theme
+		JoJo = {
+			Main = Color3.fromRGB(20, 25, 40),           -- Deep navy blue
+			Second = Color3.fromRGB(35, 40, 60),         -- Slightly lighter navy blue
+			Stroke = Color3.fromRGB(255, 215, 0),        -- Gold for Stand power effect
+			Divider = Color3.fromRGB(150, 75, 200),      -- Purple for Stand aura
+			Text = Color3.fromRGB(255, 255, 245),        -- Bright text
+			TextDark = Color3.fromRGB(255, 215, 0)       -- Gold for secondary text
 		}
 	},
-	SelectedTheme = "Neon", -- Default to the futuristic Neon theme
+	SelectedTheme = "JoJo", -- Default to the JoJo theme
 	Folder = nil,
 	SaveCfg = false,
 	Version = "2.0.0"
@@ -182,16 +191,22 @@ local function MakeElement(ElementName, ...)
 end
 
 local function SetProps(Element, Props)
-	table.foreach(Props, function(Property, Value)
+	-- Fix for 'foreach' error: check if Props is not nil
+	if not Props then return Element end
+	
+	for Property, Value in next, Props do
 		Element[Property] = Value
-	end)
+	end
 	return Element
 end
 
 local function SetChildren(Element, Children)
-	table.foreach(Children, function(_, Child)
+	-- Fix for 'foreach' error: check if Children is not nil
+	if not Children then return Element end
+	
+	for _, Child in next, Children do
 		Child.Parent = Element
-	end)
+	end
 	return Element
 end
 
@@ -340,7 +355,7 @@ CreateElement("RoundFrame", function(Color, Scale, Offset, Glow)
 		BorderSizePixel = 0
 	}, {
 		Create("UICorner", {
-			CornerRadius = UDim.new(Scale or 0, Offset or 10)
+			CornerRadius = UDim.new(Scale or 0, Offset or 5) -- Changed to 5 for more angular corners
 		})
 	})
 	
@@ -369,11 +384,11 @@ CreateElement("Button", function()
 		BorderSizePixel = 0
 	})
 	
-	-- Add ripple effect
+	-- Add ripple effect with gold color for Stand power visual
 	local Ripple = Create("Frame", {
 		Name = "Ripple",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundColor3 = Color3.fromRGB(255, 215, 0), -- Gold color
 		BackgroundTransparency = 0.8,
 		BorderSizePixel = 0,
 		Position = UDim2.fromScale(0.5, 0.5),
@@ -485,10 +500,72 @@ CreateElement("SlicedFrame", function(Color, Image, SliceScale)
 		ImageColor3 = Color or Color3.fromRGB(30, 30, 40),
 		ScaleType = Enum.ScaleType.Slice,
 		SliceCenter = Rect.new(100, 100, 100, 100),
-		SliceScale = SliceScale or 0.05
+		SliceScale = SliceScale or 0.03 -- Reduced slice scale for more angular look
 	})
 	
 	return Frame
+end)
+
+-- Create a star-shaped button for JJBA theme
+CreateElement("StarButton", function()
+	local Button = Create("TextButton", {
+		Text = "",
+		AutoButtonColor = false,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0
+	})
+	
+	-- Add star outline
+	local StarOutline = Create("ImageLabel", {
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://7734053495", -- Star shape
+		ImageColor3 = Color3.fromRGB(255, 215, 0), -- Gold color
+		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromScale(0, 0),
+		ZIndex = 2,
+		Parent = Button
+	})
+	
+	-- Add ripple effect
+	local Ripple = Create("Frame", {
+		Name = "Ripple",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = Color3.fromRGB(255, 215, 0),
+		BackgroundTransparency = 0.8,
+		BorderSizePixel = 0,
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0, 0),
+		ZIndex = 3,
+		Visible = false,
+		Parent = Button
+	})
+	
+	Create("UICorner", {
+		CornerRadius = UDim.new(1, 0),
+		Parent = Ripple
+	})
+	
+	Button.MouseButton1Down:Connect(function(X, Y)
+		local AbsolutePos = Button.AbsolutePosition
+		local AbsoluteSize = Button.AbsoluteSize
+		
+		Ripple.Position = UDim2.fromOffset(X - AbsolutePos.X, Y - AbsolutePos.Y)
+		Ripple.Visible = true
+		
+		-- Expand ripple effect with gold color for Stand power visual
+		TweenService:Create(Ripple, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(AbsoluteSize.X * 1.5, AbsoluteSize.X * 1.5)
+		}):Play()
+		
+		delay(0.5, function()
+			Ripple.Visible = false
+			Ripple.Size = UDim2.fromScale(0, 0)
+			Ripple.BackgroundTransparency = 0.8
+		end)
+	end)
+	
+	return Button
 end)
 
 local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
