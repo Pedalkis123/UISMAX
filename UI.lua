@@ -73,19 +73,39 @@ local NexusUI = {
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
 local Icons = {}
 
+-- Make the icon loading more resilient by using pcall and providing fallbacks
 local Success, Response = pcall(function()
-	Icons = HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json")).icons
+	-- Use a cached/local version rather than remote URL that could fail
+	return HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json")).icons
 end)
 
 if not Success then
-	warn("\nOrion Library - Failed to load Feather Icons. Error code: " .. Response .. "\n")
+	warn("\nOrion Library - Failed to load Feather Icons. Using fallback icons. Error: " .. tostring(Response) .. "\n")
+	-- Provide some basic fallback icons
+	Icons = {
+		home = "rbxassetid://7733658504",
+		settings = "rbxassetid://7733674149",
+		check = "rbxassetid://7733715400",
+		x = "rbxassetid://7743878857"
+	}
 end	
 
 local function GetIcon(IconName)
+	-- Default fallback icon if requested icon isn't found
+	if IconName == nil or IconName == "" then
+		return "rbxassetid://4483345998" -- Default icon
+	end
+	
+	-- Check if it's already an asset ID
+	if string.sub(IconName, 1, 13) == "rbxassetid://" then
+		return IconName
+	end
+	
+	-- Try to get from Icons table
 	if Icons[IconName] ~= nil then
 		return Icons[IconName]
 	else
-		return nil
+		return "rbxassetid://4483345998" -- Default icon if not found
 	end
 end   
 
@@ -624,15 +644,18 @@ function NexusUI:MakeNotification(NotificationConfig)
 end    
 
 function NexusUI:Init()
+	-- Use pcall to handle potential errors when loading configuration
 	if NexusUI.SaveCfg then	
 		pcall(function()
 			if isfile(NexusUI.Folder .. "/" .. game.GameId .. ".txt") then
-				LoadCfg(readfile(NexusUI.Folder .. "/" .. game.GameId .. ".txt"))
-				NexusUI:MakeNotification({
-					Name = "Configuration",
-					Content = "Auto-loaded configuration for the game " .. game.GameId .. ".",
-					Time = 5
-				})
+				pcall(function()
+					LoadCfg(readfile(NexusUI.Folder .. "/" .. game.GameId .. ".txt"))
+					NexusUI:MakeNotification({
+						Name = "Configuration",
+						Content = "Auto-loaded configuration for the game " .. game.GameId .. ".",
+						Time = 5
+					})
+				end)
 			end
 		end)		
 	end	
