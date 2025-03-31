@@ -44,24 +44,24 @@ local function GetIcon(IconName)
 	end
 end   
 
-local Orion = Instance.new("ScreenGui")
-Orion.Name = "Orion"
+local OverHeaven = Instance.new("ScreenGui")
+OverHeaven.Name = "OverHeaven"
 if syn then
-	syn.protect_gui(Orion)
-	Orion.Parent = game.CoreGui
+	syn.protect_gui(OverHeaven)
+	OverHeaven.Parent = game.CoreGui
 else
-	Orion.Parent = gethui() or game.CoreGui
+	OverHeaven.Parent = gethui() or game.CoreGui
 end
 
 if gethui then
 	for _, Interface in ipairs(gethui():GetChildren()) do
-		if Interface.Name == Orion.Name and Interface ~= Orion then
+		if Interface.Name == OverHeaven.Name and Interface ~= OverHeaven then
 			Interface:Destroy()
 		end
 	end
 else
 	for _, Interface in ipairs(game.CoreGui:GetChildren()) do
-		if Interface.Name == Orion.Name and Interface ~= Orion then
+		if Interface.Name == OverHeaven.Name and Interface ~= OverHeaven then
 			Interface:Destroy()
 		end
 	end
@@ -69,9 +69,9 @@ end
 
 function OrionLib:IsRunning()
 	if gethui then
-		return Orion.Parent == gethui()
+		return OverHeaven.Parent == gethui()
 	else
-		return Orion.Parent == game:GetService("CoreGui")
+		return OverHeaven.Parent == game:GetService("CoreGui")
 	end
 
 end
@@ -222,7 +222,7 @@ local function LoadCfg(Config)
 				end    
 			end)
 		else
-			warn("Orion Library Config Loader - Could not find ", a ,b)
+			warn("OverHeaven Library Config Loader - Could not find ", a ,b)
 		end
 	end)
 end
@@ -382,7 +382,7 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 	Position = UDim2.new(1, -25, 1, -25),
 	Size = UDim2.new(0, 300, 1, -25),
 	AnchorPoint = Vector2.new(1, 1),
-	Parent = Orion
+	Parent = OverHeaven
 })
 
 function OrionLib:MakeNotification(NotificationConfig)
@@ -468,14 +468,14 @@ function OrionLib:MakeWindow(WindowConfig)
 	local UIHidden = false
 
 	WindowConfig = WindowConfig or {}
-	WindowConfig.Name = WindowConfig.Name or "Orion Library"
+	WindowConfig.Name = WindowConfig.Name or "OverHeaven Library"
 	WindowConfig.ConfigFolder = WindowConfig.ConfigFolder or WindowConfig.Name
 	WindowConfig.SaveConfig = WindowConfig.SaveConfig or false
 	WindowConfig.HidePremium = WindowConfig.HidePremium or false
 	if WindowConfig.IntroEnabled == nil then
 		WindowConfig.IntroEnabled = true
 	end
-	WindowConfig.IntroText = WindowConfig.IntroText or "Orion Library"
+	WindowConfig.IntroText = WindowConfig.IntroText or "OverHeaven Library"
 	WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
 	WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
 	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://8834748103"
@@ -598,7 +598,7 @@ function OrionLib:MakeWindow(WindowConfig)
 	}), "Stroke")
 
 	local MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 10), {
-		Parent = Orion,
+		Parent = OverHeaven,
 		Position = UDim2.new(0.5, -307, 0.5, -172),
 		Size = UDim2.new(0, 615, 0, 344),
 		ClipsDescendants = true
@@ -684,7 +684,7 @@ function OrionLib:MakeWindow(WindowConfig)
 	local function LoadSequence()
 		MainWindow.Visible = false
 		local LoadSequenceLogo = SetProps(MakeElement("Image", WindowConfig.IntroIcon), {
-			Parent = Orion,
+			Parent = OverHeaven,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0.5, 0, 0.4, 0),
 			Size = UDim2.new(0, 28, 0, 28),
@@ -693,7 +693,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		})
 
 		local LoadSequenceText = SetProps(MakeElement("Label", WindowConfig.IntroText, 14), {
-			Parent = Orion,
+			Parent = OverHeaven,
 			Size = UDim2.new(1, 0, 1, 0),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0.5, 19, 0.5, 0),
@@ -1625,7 +1625,11 @@ function OrionLib:MakeWindow(WindowConfig)
 				end
 				return Colorpicker
 			end  
-			return ElementFunction   
+            
+            -- Create an alias for AddColorPicker to call the existing AddColorpicker function
+            function ElementFunction:AddColorPicker(ColorpickerConfig)
+                return self:AddColorpicker(ColorpickerConfig)
+            end
 		end	
 
 		local ElementFunction = {}
@@ -1720,7 +1724,7 @@ function OrionLib:MakeWindow(WindowConfig)
 end   
 
 function OrionLib:Destroy()
-	Orion:Destroy()
+	OverHeaven:Destroy()
 end
 
 return OrionLib
