@@ -1625,11 +1625,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				end
 				return Colorpicker
 			end  
-            
-            -- Create an alias for AddColorPicker to call the existing AddColorpicker function
-            function ElementFunction:AddColorPicker(ColorpickerConfig)
-                return self:AddColorpicker(ColorpickerConfig)
-            end
+			return ElementFunction   
 		end	
 
 		local ElementFunction = {}
