@@ -12,12 +12,12 @@ local OrionLib = {
 	Flags = {},
 	Themes = {
 		Default = {
-			Main = Color3.fromRGB(25, 25, 25),
-			Second = Color3.fromRGB(32, 32, 32),
-			Stroke = Color3.fromRGB(60, 60, 60),
-			Divider = Color3.fromRGB(60, 60, 60),
-			Text = Color3.fromRGB(240, 240, 240),
-			TextDark = Color3.fromRGB(150, 150, 150)
+			Main = Color3.fromRGB(240, 240, 255),  -- White with slight blue tint
+			Second = Color3.fromRGB(210, 210, 240), -- Light lavender
+			Stroke = Color3.fromRGB(100, 100, 180), -- Medium purple-blue
+			Divider = Color3.fromRGB(180, 180, 230), -- Light purple divider
+			Text = Color3.fromRGB(40, 40, 80),      -- Dark blue-purple for text
+			TextDark = Color3.fromRGB(80, 80, 140)   -- Medium blue-purple for dark text
 		}
 	},
 	SelectedTheme = "Default",
@@ -25,33 +25,10 @@ local OrionLib = {
 	SaveCfg = false
 }
 
---Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
-local Icons = {}
-
-local Success, Response = pcall(function()
-	Icons = HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json")).icons
-end)
-
-if not Success then
-	warn("\nOrion Library - Failed to load Feather Icons. Error code: " .. Response .. "\n")
-end	
-
-local function GetIcon(IconName)
-	if Icons[IconName] ~= nil then
-		return Icons[IconName]
-	else
-		return nil
-	end
-end   
-
 local OverHeaven = Instance.new("ScreenGui")
 OverHeaven.Name = "OverHeaven"
-if syn then
-	syn.protect_gui(OverHeaven)
-	OverHeaven.Parent = game.CoreGui
-else
-	OverHeaven.Parent = gethui() or game.CoreGui
-end
+OverHeaven.Parent = game.CoreGui
+OverHeaven.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 if gethui then
 	for _, Interface in ipairs(gethui():GetChildren()) do
