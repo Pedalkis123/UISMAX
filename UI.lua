@@ -1,145 +1,256 @@
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local LocalPlayer = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local HttpService = game:GetService("HttpService")
 
-local OverHeavenLib = {
-	Elements = {},
-	ThemeObjects = {},
-	Connections = {},
-	Flags = {},
-	Themes = {
-		Default = {
-			Main = Color3.fromRGB(25, 25, 25),
-			Second = Color3.fromRGB(32, 32, 32),
-			Stroke = Color3.fromRGB(60, 60, 60),
-			Divider = Color3.fromRGB(60, 60, 60),
-			Text = Color3.fromRGB(240, 240, 240),
-			TextDark = Color3.fromRGB(150, 150, 150)
-		}
-	},
-	SelectedTheme = "Default",
-	Folder = nil,
-	SaveCfg = false
+-- Global state management
+_G.OverHeavenState = _G.OverHeavenState or {
+    Connections = {},
+    ActiveToggles = {},
+    LastWindowPosition = nil
 }
+
+local OverHeavenLib = {
+    Elements = {},
+    ThemeObjects = {},
+    Connections = _G.OverHeavenState.Connections,
+    Flags = {},
+    Themes = {
+        Default = {
+            Main = Color3.fromRGB(25, 25, 25),
+            Second = Color3.fromRGB(32, 32, 32),
+            Stroke = Color3.fromRGB(60, 60, 60),
+            Divider = Color3.fromRGB(60, 60, 60),
+            Text = Color3.fromRGB(240, 240, 240),
+            TextDark = Color3.fromRGB(150, 150, 150)
+        }
+    },
+    SelectedTheme = "Default",
+    Folder = nil,
+    SaveCfg = false,
+    Initialized = false
+}
+
+-- Safe service getter
+local function getService(serviceName)
+    local success, service = pcall(function()
+        return game:GetService(serviceName)
+    end)
+    if not success then
+        warn("Failed to get service:", serviceName)
+        return nil
+    end
+    return service
+end
 
 local OverHeaven = Instance.new("ScreenGui")
 OverHeaven.Name = "OverHeaven"
-if syn then
-	syn.protect_gui(OverHeaven)
-	OverHeaven.Parent = game.CoreGui
-else
-	OverHeaven.Parent = gethui() or game.CoreGui
+
+-- Protected mode GUI handling
+local function setGuiParent()
+    local success, result = pcall(function()
+        if syn and syn.protect_gui then
+            syn.protect_gui(OverHeaven)
+            OverHeaven.Parent = game.CoreGui
+        else
+            local gethui = (gethui or get_hidden_ui)
+            if gethui then
+                OverHeaven.Parent = gethui()
+            else
+                OverHeaven.Parent = game.CoreGui
+            end
+        end
+    end)
+    
+    if not success then
+        warn("Failed to set GUI parent:", result)
+        -- Fallback to PlayerGui if everything else fails
+        OverHeaven.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
 end
 
-if gethui then
-	for _, Interface in ipairs(gethui():GetChildren()) do
-		if Interface.Name == OverHeaven.Name and Interface ~= OverHeaven then
-			Interface:Destroy()
-		end
-	end
-else
-	for _, Interface in ipairs(game.CoreGui:GetChildren()) do
-		if Interface.Name == OverHeaven.Name and Interface ~= OverHeaven then
-			Interface:Destroy()
-		end
-	end
+-- Clean up existing GUIs
+local function cleanupExistingGuis()
+    local parent = OverHeaven.Parent
+    if parent then
+        for _, Interface in ipairs(parent:GetChildren()) do
+            if Interface.Name == OverHeaven.Name and Interface ~= OverHeaven then
+                Interface:Destroy()
+            end
+        end
+    end
 end
+
+setGuiParent()
+cleanupExistingGuis()
 
 function OverHeavenLib:IsRunning()
-	if gethui then
-		return OverHeaven.Parent == gethui()
-	else
-		return OverHeaven.Parent == game:GetService("CoreGui")
-	end
-
+    return OverHeaven and OverHeaven.Parent ~= nil
 end
 
+-- Improved connection management
 local function AddConnection(Signal, Function)
-	if (not OverHeavenLib:IsRunning()) then
-		return
-	end
-	local SignalConnect = Signal:Connect(Function)
-	table.insert(OverHeavenLib.Connections, SignalConnect)
-	return SignalConnect
+    if not Signal then return end
+    
+    local success, SignalConnect = pcall(function()
+        return Signal:Connect(Function)
+    end)
+    
+    if success and SignalConnect then
+        table.insert(OverHeavenLib.Connections, SignalConnect)
+        return SignalConnect
+    else
+        warn("Failed to create connection")
+        return nil
+    end
 end
 
-task.spawn(function()
-	while (OverHeavenLib:IsRunning()) do
-		wait()
-	end
+-- Connection cleanup
+local function cleanup()
+    for _, connection in pairs(OverHeavenLib.Connections) do
+        if typeof(connection) == "RBXScriptConnection" and connection.Connected then
+            connection:Disconnect()
+        end
+    end
+    table.clear(OverHeavenLib.Connections)
+end
 
-	for _, Connection in next, OverHeavenLib.Connections do
-		Connection:Disconnect()
-	end
+-- Auto cleanup on script end
+task.spawn(function()
+    while OverHeavenLib:IsRunning() do
+        task.wait(1)
+    end
+    cleanup()
 end)
 
 local function AddDraggingFunctionality(DragPoint, Main)
-	pcall(function()
-		local Dragging, DragInput, MousePos, FramePos = false
-		DragPoint.InputBegan:Connect(function(Input)
-			if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-				Dragging = true
-				MousePos = Input.Position
-				FramePos = Main.Position
-
-				Input.Changed:Connect(function()
-					if Input.UserInputState == Enum.UserInputState.End then
-						Dragging = false
-					end
-				end)
-			end
-		end)
-		DragPoint.InputChanged:Connect(function(Input)
-			if Input.UserInputType == Enum.UserInputType.MouseMovement then
-				DragInput = Input
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(Input)
-			if Input == DragInput and Dragging then
-				local Delta = Input.Position - MousePos
-				TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position  = UDim2.new(FramePos.X.Scale,FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y)}):Play()
-			end
-		end)
-	end)
-end   
+    if not DragPoint or not Main then return end
+    
+    local dragging = false
+    local dragInput
+    local dragStart
+    local startPos
+    
+    local function update(input)
+        if not dragging then return end
+        
+        local delta = input.Position - dragStart
+        local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                                 startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                                 
+        local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(Main, tweenInfo, {Position = position}):Play()
+    end
+    
+    AddConnection(DragPoint.InputBegan, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Main.Position
+            
+            AddConnection(input.Changed, function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    AddConnection(DragPoint.InputChanged, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    AddConnection(UserInputService.InputChanged, function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
 
 local function Create(Name, Properties, Children)
-	local Object = Instance.new(Name)
-	for i, v in next, Properties or {} do
-		Object[i] = v
-	end
-	for i, v in next, Children or {} do
-		v.Parent = Object
-	end
-	return Object
+    local success, Object = pcall(function()
+        local obj = Instance.new(Name)
+        
+        -- Apply properties
+        for prop, value in next, Properties or {} do
+            pcall(function() obj[prop] = value end)
+        end
+        
+        -- Add children
+        for _, child in next, Children or {} do
+            pcall(function() child.Parent = obj end)
+        end
+        
+        return obj
+    end)
+    
+    if success then
+        return Object
+    else
+        warn("Failed to create object:", Name, Object)
+        return nil
+    end
 end
 
 local function CreateElement(ElementName, ElementFunction)
-	OverHeavenLib.Elements[ElementName] = function(...)
-		return ElementFunction(...)
-	end
+    if type(ElementName) ~= "string" or type(ElementFunction) ~= "function" then
+        warn("Invalid element creation parameters")
+        return
+    end
+    
+    OverHeavenLib.Elements[ElementName] = function(...)
+        local success, result = pcall(ElementFunction, ...)
+        if success then
+            return result
+        else
+            warn("Failed to create element:", ElementName, result)
+            return nil
+        end
+    end
 end
 
 local function MakeElement(ElementName, ...)
-	local NewElement = OverHeavenLib.Elements[ElementName](...)
-	return NewElement
+    if not OverHeavenLib.Elements[ElementName] then
+        warn("Element does not exist:", ElementName)
+        return nil
+    end
+    
+    local success, element = pcall(OverHeavenLib.Elements[ElementName], ...)
+    if success then
+        return element
+    else
+        warn("Failed to make element:", ElementName, element)
+        return nil
+    end
 end
 
 local function SetProps(Element, Props)
-	table.foreach(Props, function(Property, Value)
-		Element[Property] = Value
-	end)
-	return Element
+    if not Element then return Element end
+    
+    for Property, Value in next, Props do
+        pcall(function()
+            Element[Property] = Value
+        end)
+    end
+    
+    return Element
 end
 
 local function SetChildren(Element, Children)
-	table.foreach(Children, function(_, Child)
-		Child.Parent = Element
-	end)
-	return Element
+    if not Element then return Element end
+    
+    for _, Child in next, Children do
+        pcall(function()
+            Child.Parent = Element
+        end)
+    end
+    
+    return Element
 end
 
 local function Round(Number, Factor)
@@ -149,77 +260,123 @@ local function Round(Number, Factor)
 end
 
 local function ReturnProperty(Object)
-	if Object:IsA("Frame") or Object:IsA("TextButton") then
-		return "BackgroundColor3"
-	end 
-	if Object:IsA("ScrollingFrame") then
-		return "ScrollBarImageColor3"
-	end 
-	if Object:IsA("UIStroke") then
-		return "Color"
-	end 
-	if Object:IsA("TextLabel") or Object:IsA("TextBox") then
-		return "TextColor3"
-	end   
-	if Object:IsA("ImageLabel") or Object:IsA("ImageButton") then
-		return "ImageColor3"
-	end   
+    if not Object then return nil end
+    
+    if Object:IsA("Frame") or Object:IsA("TextButton") then
+        return "BackgroundColor3"
+    elseif Object:IsA("ScrollingFrame") then
+        return "ScrollBarImageColor3"
+    elseif Object:IsA("UIStroke") then
+        return "Color"
+    elseif Object:IsA("TextLabel") or Object:IsA("TextBox") then
+        return "TextColor3"
+    elseif Object:IsA("ImageLabel") or Object:IsA("ImageButton") then
+        return "ImageColor3"
+    end
+    return nil
 end
 
 local function AddThemeObject(Object, Type)
-	if not OverHeavenLib.ThemeObjects[Type] then
-		OverHeavenLib.ThemeObjects[Type] = {}
-	end    
-	table.insert(OverHeavenLib.ThemeObjects[Type], Object)
-	Object[ReturnProperty(Object)] = OverHeavenLib.Themes[OverHeavenLib.SelectedTheme][Type]
-	return Object
-end    
+    if not Object or not Type then return Object end
+    
+    if not OverHeavenLib.ThemeObjects[Type] then
+        OverHeavenLib.ThemeObjects[Type] = {}
+    end
+    
+    local property = ReturnProperty(Object)
+    if property then
+        table.insert(OverHeavenLib.ThemeObjects[Type], Object)
+        pcall(function()
+            Object[property] = OverHeavenLib.Themes[OverHeavenLib.SelectedTheme][Type]
+        end)
+    end
+    
+    return Object
+end
 
 local function SetTheme()
-	for Name, Type in pairs(OverHeavenLib.ThemeObjects) do
-		for _, Object in pairs(Type) do
-			Object[ReturnProperty(Object)] = OverHeavenLib.Themes[OverHeavenLib.SelectedTheme][Name]
-		end    
-	end    
+    for Name, Type in pairs(OverHeavenLib.ThemeObjects) do
+        for _, Object in pairs(Type) do
+            local property = ReturnProperty(Object)
+            if property then
+                pcall(function()
+                    Object[property] = OverHeavenLib.Themes[OverHeavenLib.SelectedTheme][Name]
+                end)
+            end
+        end
+    end
 end
 
 local function PackColor(Color)
-	return {R = Color.R * 255, G = Color.G * 255, B = Color.B * 255}
-end    
+    if not Color then return {R = 0, G = 0, B = 0} end
+    return {
+        R = math.clamp(Color.R * 255, 0, 255),
+        G = math.clamp(Color.G * 255, 0, 255),
+        B = math.clamp(Color.B * 255, 0, 255)
+    }
+end
 
 local function UnpackColor(Color)
-	return Color3.fromRGB(Color.R, Color.G, Color.B)
+    if not Color then return Color3.new() end
+    return Color3.fromRGB(
+        math.clamp(Color.R, 0, 255),
+        math.clamp(Color.G, 0, 255),
+        math.clamp(Color.B, 0, 255)
+    )
 end
 
 local function LoadCfg(Config)
-	local Data = HttpService:JSONDecode(Config)
-	table.foreach(Data, function(a,b)
-		if OverHeavenLib.Flags[a] then
-			spawn(function() 
-				if OverHeavenLib.Flags[a].Type == "Colorpicker" then
-					OverHeavenLib.Flags[a]:Set(UnpackColor(b))
-				else
-					OverHeavenLib.Flags[a]:Set(b)
-				end    
-			end)
-		else
-			warn("OverHeaven Library Config Loader - Could not find ", a ,b)
-		end
-	end)
+    if not Config then return end
+    
+    local success, Data = pcall(function()
+        return HttpService:JSONDecode(Config)
+    end)
+    
+    if not success then
+        warn("Failed to decode config:", Data)
+        return
+    end
+    
+    for flagName, value in pairs(Data) do
+        if OverHeavenLib.Flags[flagName] then
+            task.spawn(function()
+                pcall(function()
+                    if OverHeavenLib.Flags[flagName].Type == "Colorpicker" then
+                        OverHeavenLib.Flags[flagName]:Set(UnpackColor(value))
+                    else
+                        OverHeavenLib.Flags[flagName]:Set(value)
+                    end
+                end)
+            end)
+        end
+    end
 end
 
 local function SaveCfg(Name)
-	local Data = {}
-	for i,v in pairs(OverHeavenLib.Flags) do
-		if v.Save then
-			if v.Type == "Colorpicker" then
-				Data[i] = PackColor(v.Value)
-			else
-				Data[i] = v.Value
-			end
-		end	
-	end
-	writefile(OverHeavenLib.Folder .. "/" .. Name .. ".txt", tostring(HttpService:JSONEncode(Data)))
+    if not Name or not OverHeavenLib.Folder then return end
+    
+    local Data = {}
+    for flagName, flag in pairs(OverHeavenLib.Flags) do
+        if flag.Save then
+            if flag.Type == "Colorpicker" then
+                Data[flagName] = PackColor(flag.Value)
+            else
+                Data[flagName] = flag.Value
+            end
+        end
+    end
+    
+    local success, encoded = pcall(function()
+        return HttpService:JSONEncode(Data)
+    end)
+    
+    if success then
+        pcall(function()
+            writefile(OverHeavenLib.Folder .. "/" .. Name .. ".txt", encoded)
+        end)
+    else
+        warn("Failed to save config:", encoded)
+    end
 end
 
 local WhitelistedMouse = {Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2,Enum.UserInputType.MouseButton3}
@@ -367,80 +524,111 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 })
 
 function OverHeavenLib:MakeNotification(NotificationConfig)
-	spawn(function()
-		NotificationConfig.Name = NotificationConfig.Name or "Notification"
-		NotificationConfig.Content = NotificationConfig.Content or "Test"
-		NotificationConfig.Image = NotificationConfig.Image or "rbxassetid://4384403532"
-		NotificationConfig.Time = NotificationConfig.Time or 15
-
-		local NotificationParent = SetProps(MakeElement("TFrame"), {
-			Size = UDim2.new(1, 0, 0, 0),
-			AutomaticSize = Enum.AutomaticSize.Y,
-			Parent = NotificationHolder
-		})
-
-		local NotificationFrame = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(25, 25, 25), 0, 10), {
-			Parent = NotificationParent, 
-			Size = UDim2.new(1, 0, 0, 0),
-			Position = UDim2.new(1, -55, 0, 0),
-			BackgroundTransparency = 0,
-			AutomaticSize = Enum.AutomaticSize.Y
-		}), {
-			MakeElement("Stroke", Color3.fromRGB(93, 93, 93), 1.2),
-			MakeElement("Padding", 12, 12, 12, 12),
-			SetProps(MakeElement("Image", NotificationConfig.Image), {
-				Size = UDim2.new(0, 20, 0, 20),
-				ImageColor3 = Color3.fromRGB(240, 240, 240),
-				Name = "Icon"
-			}),
-			SetProps(MakeElement("Label", NotificationConfig.Name, 15), {
-				Size = UDim2.new(1, -30, 0, 20),
-				Position = UDim2.new(0, 30, 0, 0),
-				Font = Enum.Font.GothamBold,
-				Name = "Title"
-			}),
-			SetProps(MakeElement("Label", NotificationConfig.Content, 14), {
-				Size = UDim2.new(1, 0, 0, 0),
-				Position = UDim2.new(0, 0, 0, 25),
-				Font = Enum.Font.GothamSemibold,
-				Name = "Content",
-				AutomaticSize = Enum.AutomaticSize.Y,
-				TextColor3 = Color3.fromRGB(200, 200, 200),
-				TextWrapped = true
-			})
-		})
-
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
-
-		wait(NotificationConfig.Time - 0.88)
-		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {BackgroundTransparency = 0.6}):Play()
-		wait(0.3)
-		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {Transparency = 0.9}):Play()
-		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
-		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
-		wait(0.05)
-
-		NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0),'In','Quint',0.8,true)
-		wait(1.35)
-		NotificationFrame:Destroy()
-	end)
-end    
+    NotificationConfig = NotificationConfig or {}
+    NotificationConfig.Name = NotificationConfig.Name or "Notification"
+    NotificationConfig.Content = NotificationConfig.Content or "Content"
+    NotificationConfig.Image = NotificationConfig.Image or "rbxassetid://4384403532"
+    NotificationConfig.Time = NotificationConfig.Time or 5
+    
+    task.spawn(function()
+        pcall(function()
+            local NotificationParent = SetProps(MakeElement("TFrame"), {
+                Size = UDim2.new(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Parent = NotificationHolder
+            })
+            
+            if not NotificationParent then return end
+            
+            local NotificationFrame = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(25, 25, 25), 0, 10), {
+                Parent = NotificationParent, 
+                Size = UDim2.new(1, 0, 0, 0),
+                Position = UDim2.new(1, -55, 0, 0),
+                BackgroundTransparency = 0,
+                AutomaticSize = Enum.AutomaticSize.Y
+            }), {
+                MakeElement("Stroke", Color3.fromRGB(93, 93, 93), 1.2),
+                MakeElement("Padding", 12, 12, 12, 12),
+                SetProps(MakeElement("Image", NotificationConfig.Image), {
+                    Size = UDim2.new(0, 20, 0, 20),
+                    ImageColor3 = Color3.fromRGB(240, 240, 240),
+                    Name = "Icon"
+                }),
+                SetProps(MakeElement("Label", NotificationConfig.Name, 15), {
+                    Size = UDim2.new(1, -30, 0, 20),
+                    Position = UDim2.new(0, 30, 0, 0),
+                    Font = Enum.Font.GothamBold,
+                    Name = "Title"
+                }),
+                SetProps(MakeElement("Label", NotificationConfig.Content, 14), {
+                    Size = UDim2.new(1, 0, 0, 0),
+                    Position = UDim2.new(0, 0, 0, 25),
+                    Font = Enum.Font.GothamSemibold,
+                    Name = "Content",
+                    AutomaticSize = Enum.AutomaticSize.Y,
+                    TextColor3 = Color3.fromRGB(200, 200, 200),
+                    TextWrapped = true
+                })
+            })
+            
+            if not NotificationFrame then return end
+            
+            -- Animate in
+            TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+            
+            -- Wait for display duration
+            task.wait(NotificationConfig.Time - 0.88)
+            
+            -- Animate out
+            pcall(function()
+                TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
+                TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {BackgroundTransparency = 0.6}):Play()
+                task.wait(0.3)
+                TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {Transparency = 0.9}):Play()
+                TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
+                TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
+                
+                NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0), 'In', 'Quint', 0.8, true)
+                task.wait(1.35)
+                NotificationFrame:Destroy()
+            end)
+        end)
+    end)
+end
 
 function OverHeavenLib:Init()
-	if OverHeavenLib.SaveCfg then	
-		pcall(function()
-			if isfile(OverHeavenLib.Folder .. "/" .. game.GameId .. ".txt") then
-				LoadCfg(readfile(OverHeavenLib.Folder .. "/" .. game.GameId .. ".txt"))
-				OverHeavenLib:MakeNotification({
-					Name = "Configuration",
-					Content = "Auto-loaded configuration for the game " .. game.GameId .. ".",
-					Time = 5
-				})
-			end
-		end)		
-	end	
-end	
+    if self.Initialized then return end
+    
+    -- Create config folder if saving is enabled
+    if self.SaveCfg then
+        pcall(function()
+            if not isfolder(self.Folder) then
+                makefolder(self.Folder)
+            end
+            
+            -- Try to load existing config
+            local configPath = self.Folder .. "/" .. game.GameId .. ".txt"
+            if isfile(configPath) then
+                local config = readfile(configPath)
+                LoadCfg(config)
+                
+                self:MakeNotification({
+                    Name = "Configuration",
+                    Content = "Successfully loaded configuration for " .. game.GameId,
+                    Time = 5
+                })
+            end
+        end)
+    end
+    
+    -- Initialize theme
+    pcall(function()
+        SetTheme()
+    end)
+    
+    -- Set initialized flag
+    self.Initialized = true
+end
 
 function OverHeavenLib:MakeWindow(WindowConfig)
 	local FirstTab = true
