@@ -25,25 +25,6 @@ local OverHeavenLib = {
 	SaveCfg = false
 }
 
---Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
-local Icons = {}
-
-local Success, Response = pcall(function()
-	Icons = HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json")).icons
-end)
-
-if not Success then
-	warn("\nOrion Library - Failed to load Feather Icons. Error code: " .. Response .. "\n")
-end	
-
-local function GetIcon(IconName)
-	if Icons[IconName] ~= nil then
-		return Icons[IconName]
-	else
-		return nil
-	end
-end   
-
 local OverHeaven = Instance.new("ScreenGui")
 OverHeaven.Name = "OverHeaven"
 if syn then
@@ -1693,15 +1674,6 @@ function OverHeavenLib:MakeWindow(WindowConfig)
 		end
 		return ElementFunction   
 	end  
-	
-	OverHeavenLib:MakeNotification({
-		Name = "UI Library Upgrade",
-		Content = "New UI Library Available at sirius.menu/discord and sirius.menu/rayfield",
-		Time = 5
-	})
-	
-
-	
 	return TabFunction
 end   
 
