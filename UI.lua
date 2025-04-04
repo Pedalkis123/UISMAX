@@ -1077,13 +1077,42 @@ function OverHeavenLib:MakeWindow(WindowConfig)
 
 				function Toggle:Set(Value)
 					Toggle.Value = Value
-					TweenService:Create(ToggleBox, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Toggle.Value and ToggleConfig.Color or OverHeavenLib.Themes.Default.Divider}):Play()
-					TweenService:Create(ToggleBox.Stroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Color = Toggle.Value and ToggleConfig.Color or OverHeavenLib.Themes.Default.Stroke}):Play()
-					TweenService:Create(ToggleBox.Ico, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = Toggle.Value and 0 or 1, Size = Toggle.Value and UDim2.new(0, 20, 0, 20) or UDim2.new(0, 8, 0, 8)}):Play()
-					ToggleConfig.Callback(Toggle.Value)
-				end    
+					
+					-- Safety check for ToggleBox
+					if not ToggleBox then return end
+					
+					-- Safely tween the background
+					TweenService:Create(ToggleBox, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+						BackgroundColor3 = Toggle.Value and ToggleConfig.Color or OverHeavenLib.Themes.Default.Divider
+					}):Play()
+					
+					-- Safely tween the stroke
+					local stroke = ToggleBox:FindFirstChild("Stroke")
+					if stroke then
+						TweenService:Create(stroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+							Color = Toggle.Value and ToggleConfig.Color or OverHeavenLib.Themes.Default.Stroke
+						}):Play()
+					end
+					
+					-- Safely tween the icon
+					local ico = ToggleBox:FindFirstChild("Ico")
+					if ico then
+						TweenService:Create(ico, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+							ImageTransparency = Toggle.Value and 0 or 1,
+							Size = Toggle.Value and UDim2.new(0, 20, 0, 20) or UDim2.new(0, 8, 0, 8)
+						}):Play()
+					end
+					
+					-- Call the callback after everything else
+					pcall(function()
+						ToggleConfig.Callback(Toggle.Value)
+					end)
+				end
 
-				Toggle:Set(Toggle.Value)
+				-- Safe initial set with error handling
+				pcall(function()
+					Toggle:Set(Toggle.Value)
+				end)
 
 				AddConnection(Click.MouseEnter, function()
 					TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OverHeavenLib.Themes[OverHeavenLib.SelectedTheme].Second.R * 255 + 3, OverHeavenLib.Themes[OverHeavenLib.SelectedTheme].Second.G * 255 + 3, OverHeavenLib.Themes[OverHeavenLib.SelectedTheme].Second.B * 255 + 3)}):Play()
