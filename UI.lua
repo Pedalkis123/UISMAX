@@ -385,7 +385,97 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 	Parent = OverHeaven
 })
 
-function OverHeavenLib:MakeNotification(NotificationConfig)
+-- Fix string split function (add at the top of the file, after utilities)
+local function splitString(str, separator)
+    if separator == nil then
+        separator = "%s"
+    end
+    
+    local parts = {}
+    for part in string.gmatch(str, "([^" .. separator .. "]+)") do
+        table.insert(parts, part)
+    end
+    return parts
+end
+
+-- Update SafeGetProperty to use the above function
+local function SafeGetProperty(object, propertyPath)
+    if not object then return nil end
+    
+    local currentObj = object
+    local pathParts = splitString(propertyPath, ".")
+    
+    for i, part in ipairs(pathParts) do
+        if not currentObj then return nil end
+        
+        if i == #pathParts then
+            -- For the final property, just try to return it
+            local success, result = pcall(function()
+                return currentObj[part]
+            end)
+            if success then
+                return result
+            else
+                return nil
+            end
+        else
+            -- For parent objects, only continue if they exist
+            if typeof(currentObj) == "Instance" and currentObj:FindFirstChild(part) then
+                currentObj = currentObj[part]
+            else
+                local success
+                success, currentObj = pcall(function()
+                    return currentObj[part]
+                end)
+                
+                if not success or currentObj == nil then
+                    return nil
+                end
+            end
+        end
+    end
+    
+    return currentObj
+end
+
+-- Update SafeSetProperty to use the split function
+local function SafeSetProperty(object, propertyPath, value)
+    if not object then return false end
+    
+    local currentObj = object
+    local pathParts = splitString(propertyPath, ".")
+    
+    for i, part in ipairs(pathParts) do
+        if not currentObj then return false end
+        
+        if i == #pathParts then
+            -- For the final property, set it if possible
+            local success = pcall(function()
+                currentObj[part] = value
+            end)
+            return success
+        else
+            -- For parent objects, only continue if they exist
+            if typeof(currentObj) == "Instance" and currentObj:FindFirstChild(part) then
+                currentObj = currentObj[part]
+            else
+                local success
+                success, currentObj = pcall(function()
+                    return currentObj[part]
+                end)
+                
+                if not success or currentObj == nil then
+                    return false
+                end
+            end
+        end
+    end
+    
+    return false
+end
+
+-- Update the Notification function to use safe property access
+local function MakeNotification(NotificationConfig)
 	spawn(function()
 		NotificationConfig.Name = NotificationConfig.Name or "Notification"
 		NotificationConfig.Content = NotificationConfig.Content or "Test"
@@ -432,12 +522,28 @@ function OverHeavenLib:MakeNotification(NotificationConfig)
 		TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
 
 		wait(NotificationConfig.Time - 0.88)
-		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
+		
+		-- Use SafeSetProperty to avoid errors if objects don't exist
+		if NotificationFrame:FindFirstChild("Icon") then
+			TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
+		end
+		
 		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {BackgroundTransparency = 0.6}):Play()
 		wait(0.3)
-		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {Transparency = 0.9}):Play()
-		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
-		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
+		
+		local uiStroke = NotificationFrame:FindFirstChildOfClass("UIStroke")
+		if uiStroke then
+			TweenService:Create(uiStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {Transparency = 0.9}):Play()
+		end
+		
+		if NotificationFrame:FindFirstChild("Title") then
+			TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
+		end
+		
+		if NotificationFrame:FindFirstChild("Content") then
+			TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
+		end
+		
 		wait(0.05)
 
 		NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0),'In','Quint',0.8,true)
@@ -445,6 +551,10 @@ function OverHeavenLib:MakeNotification(NotificationConfig)
 		NotificationFrame:Destroy()
 	end)
 end    
+
+function OverHeavenLib:MakeNotification(NotificationConfig)
+	MakeNotification(NotificationConfig)
+end
 
 function OverHeavenLib:Init()
 	if OverHeavenLib.SaveCfg then	
@@ -664,19 +774,42 @@ function OverHeavenLib:MakeWindow(WindowConfig)
 	AddConnection(MinimizeBtn.MouseButton1Up, function()
 		if Minimized then
 			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, 615, 0, 344)}):Play()
-			MinimizeBtn.Ico.Image = "rbxassetid://7072719338"
+			
+			local icoObj = MinimizeBtn:FindFirstChild("Ico")
+			if icoObj then
+				SafeSetProperty(icoObj, "Image", "rbxassetid://7072719338")
+			end
+			
 			wait(.02)
 			MainWindow.ClipsDescendants = false
-			WindowStuff.Visible = true
-			WindowTopBarLine.Visible = true
+			
+			if WindowStuff then
+				WindowStuff.Visible = true
+			end
+			
+			if WindowTopBarLine then
+				WindowTopBarLine.Visible = true
+			end
 		else
-			MainWindow.ClipsDescendants = true
-			WindowTopBarLine.Visible = false
-			MinimizeBtn.Ico.Image = "rbxassetid://7072720870"
+			if MainWindow then
+				MainWindow.ClipsDescendants = true
+			end
+			
+			if WindowTopBarLine then
+				WindowTopBarLine.Visible = false
+			end
+			
+			local icoObj = MinimizeBtn:FindFirstChild("Ico")
+			if icoObj then
+				SafeSetProperty(icoObj, "Image", "rbxassetid://7072720870")
+			end
 
 			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, WindowName.TextBounds.X + 140, 0, 50)}):Play()
 			wait(0.1)
-			WindowStuff.Visible = false	
+			
+			if WindowStuff then
+				WindowStuff.Visible = false
+			end
 		end
 		Minimized = not Minimized    
 	end)
@@ -1698,6 +1831,75 @@ end
 
 function OverHeavenLib:Destroy()
 	OverHeaven:Destroy()
+end
+
+-- Add a utility function at the top of the file, after other utility functions
+local function SafeGetProperty(object, propertyPath)
+    if not object then return nil end
+    
+    local currentObj = object
+    local pathParts = propertyPath:split(".")
+    
+    for i, part in ipairs(pathParts) do
+        if not currentObj then return nil end
+        
+        if i == #pathParts then
+            -- For the final property, just try to return it
+            pcall(function()
+                return currentObj[part]
+            end)
+            return currentObj[part]
+        else
+            -- For parent objects, only continue if they exist
+            if typeof(currentObj) == "Instance" and currentObj:FindFirstChild(part) then
+                currentObj = currentObj[part]
+            else
+                pcall(function()
+                    currentObj = currentObj[part]
+                end)
+                
+                if currentObj == nil then
+                    return nil
+                end
+            end
+        end
+    end
+    
+    return currentObj
+end
+
+local function SafeSetProperty(object, propertyPath, value)
+    if not object then return false end
+    
+    local currentObj = object
+    local pathParts = propertyPath:split(".")
+    
+    for i, part in ipairs(pathParts) do
+        if not currentObj then return false end
+        
+        if i == #pathParts then
+            -- For the final property, set it if possible
+            local success = pcall(function()
+                currentObj[part] = value
+            end)
+            return success
+        else
+            -- For parent objects, only continue if they exist
+            if typeof(currentObj) == "Instance" and currentObj:FindFirstChild(part) then
+                currentObj = currentObj[part]
+            else
+                pcall(function()
+                    currentObj = currentObj[part]
+                end)
+                
+                if currentObj == nil then
+                    return false
+                end
+            end
+        end
+    end
+    
+    return false
 end
 
 return OverHeavenLib
