@@ -546,7 +546,8 @@ local function MakeNotification(NotificationConfig)
 		
 		wait(0.05)
 
-		NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0),'In','Quint',0.8,true)
+		-- Replace problematic TweenPosition with TweenService
+		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Position = UDim2.new(1, 20, 0, 0)}):Play()
 		wait(1.35)
 		NotificationFrame:Destroy()
 	end)
