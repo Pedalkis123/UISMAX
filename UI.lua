@@ -32,10 +32,6 @@ local Success, Response = pcall(function()
 	Icons = HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json")).icons
 end)
 
-if not Success then
-	warn("\nOrion Library - Failed to load Feather Icons. Error code: " .. Response .. "\n")
-end	
-
 local function GetIcon(IconName)
 	if Icons[IconName] ~= nil then
 		return Icons[IconName]
@@ -45,7 +41,7 @@ local function GetIcon(IconName)
 end   
 
 local OverHeaven = Instance.new("ScreenGui")
-OverHeaven.Name = "OverHeaven"
+OverHeaven.Name = "OverHeaven Hub"
 if syn then
 	syn.protect_gui(OverHeaven)
 	OverHeaven.Parent = game.CoreGui
