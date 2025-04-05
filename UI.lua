@@ -218,7 +218,7 @@ local function LoadCfg(Config)
 				end    
 			end)
 		else
-			warn("OverHeaven Library Config Loader - Could not find ", a ,b)
+			warn("OverHeaven Hub Config Loader - Could not find ", a ,b)
 		end
 	end)
 end
@@ -575,14 +575,14 @@ function OverHeavenLib:MakeWindow(WindowConfig)
 	local UIHidden = false
 
 	WindowConfig = WindowConfig or {}
-	WindowConfig.Name = WindowConfig.Name or "OverHeaven Library"
+	WindowConfig.Name = WindowConfig.Name or "OverHeaven Hub"
 	WindowConfig.ConfigFolder = WindowConfig.ConfigFolder or WindowConfig.Name
 	WindowConfig.SaveConfig = WindowConfig.SaveConfig or false
 	WindowConfig.HidePremium = WindowConfig.HidePremium or false
 	if WindowConfig.IntroEnabled == nil then
 		WindowConfig.IntroEnabled = true
 	end
-	WindowConfig.IntroText = WindowConfig.IntroText or "OverHeaven Library"
+	WindowConfig.IntroText = WindowConfig.IntroText or "OverHeaven Hub"
 	WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
 	WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
 	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://8834748103"
