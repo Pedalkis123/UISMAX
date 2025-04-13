@@ -1864,7 +1864,7 @@ local function SafeGetProperty(object, propertyPath)
     if not object then return nil end
     
     local currentObj = object
-    local pathParts = propertyPath:split(".")
+    local pathParts = splitString(propertyPath, ".")
     
     for i, part in ipairs(pathParts) do
         if not currentObj then return nil end
@@ -1898,7 +1898,7 @@ local function SafeSetProperty(object, propertyPath, value)
     if not object then return false end
     
     local currentObj = object
-    local pathParts = propertyPath:split(".")
+    local pathParts = splitString(propertyPath, ".")
     
     for i, part in ipairs(pathParts) do
         if not currentObj then return false end
